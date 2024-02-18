@@ -1,0 +1,61 @@
+mql5
+// Developer: Forex Robot Easy Team
+// Developer's Site: forexroboteasy.com
+// Program Name: Bullish Pin Bar Pro
+
+#include <Trade\Trade.mqh>
+#include <Trade\Trade.mqh>
+#include <Trade\PositionInfo.mqh>
+
+// Define constants
+#define BULLISH_PIN_BAR_BODY_RATIO 0.3
+#define BULLISH_PIN_BAR_TAIL_RATIO 2.0
+#define TRAILING_STOP_DISTANCE 10
+#define TRAILING_STOP_STEP 5
+
+// Declare global variables
+CTrade trade;
+CPositionInfo positionInfo;
+
+// Function to identify and trade bullish pin bar patterns
+void tradeBullishPinBar()
+{
+    // Get the current candlestick data
+    MqlRates currentCandlestick;
+    if (!CopyRates(_Symbol, PERIOD_CURRENT, 0, 1, currentCandlestick))
+    {
+        Print('Failed to retrieve current candlestick data');
+        return;
+    }
+
+    // Calculate the body and tail lengths of the current candlestick
+    double bodyLength = MathAbs(currentCandlestick.close - currentCandlestick.open);
+    double tailLength = MathMax(currentCandlestick.high - currentCandlestick.close, currentCandlestick.open - currentCandlestick.low);
+
+    // Calculate the body to tail ratio
+    double bodyToTailRatio = bodyLength / tailLength;
+
+    // Check if the current candlestick meets the criteria for a bullish pin bar pattern
+    if (bodyToTailRatio >= BULLISH_PIN_BAR_BODY_RATIO && bodyToTailRatio <= BULLISH_PIN_BAR_TAIL_RATIO)
+    {
+        // Open a buy position
+        double entryPrice = currentCandlestick.close;
+        double stopLoss = currentCandlestick.low - (2 * tailLength);
+        double takeProfit = currentCandlestick.close + (2 * tailLength);
+        int ticket = trade.Buy(_Symbol, 0.01, entryPrice, stopLoss, takeProfit, 'Bullish Pin Bar');
+
+        // Set trailing stop for the position
+        trade.PositionModify(ticket, entryPrice, stopLoss, takeProfit, TRAILING_STOP_DISTANCE, TRAILING_STOP_STEP);
+    }
+}
+
+// Entry point of the program
+void OnTick()
+{
+    // Check if there is an open position
+    if (positionInfo.Total() == 0)
+    {
+        // Identify and trade bullish pin bar patterns
+        tradeBullishPinBar();
+    }
+}
